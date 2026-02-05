@@ -1,0 +1,75 @@
+# Clang-format configuration for Quake project
+# Based on a clean, readable C style
+
+Language: Cpp
+BasedOnStyle: LLVM
+
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+IndentCaseLabels: true
+IndentCaseBlocks: false
+IndentGotoLabels: false
+
+# Braces
+BreakBeforeBraces: Attach
+BraceWrapping:
+  AfterControlStatement: Never
+  AfterFunction: false
+  AfterStruct: false
+  AfterEnum: false
+  BeforeElse: false
+  BeforeWhile: false
+
+# Line length
+ColumnLimit: 100
+
+# Alignment
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignConsecutiveMacros: true
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+
+# Spacing
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# Line breaks
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterReturnType: None
+BinPackArguments: true
+BinPackParameters: true
+BreakBeforeBinaryOperators: None
+
+# Includes
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Local headers first
+  - Regex: '^".*"'
+    Priority: 1
+  # System headers
+  - Regex: '^<.*>'
+    Priority: 2
+
+# Pointers
+PointerAlignment: Right
+DerivePointerAlignment: false
+
+# Other
+SortIncludes: true
+ReflowComments: true
+InsertNewlineAtEOF: true
