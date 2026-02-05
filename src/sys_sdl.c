@@ -143,11 +143,12 @@ void Sys_mkdir(char *path)
 int Sys_FileOpenRead(char *path, int *handle)
 {
     int h;
-    struct stat fileinfo;
 
 #ifdef _WIN32
+    struct _stat fileinfo;
     h = _open(path, _O_RDONLY | _O_BINARY);
 #else
+    struct stat fileinfo;
     h = open(path, O_RDONLY);
 #endif
     *handle = h;

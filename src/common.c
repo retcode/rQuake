@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // common.c -- misc functions used in client and server
 
 #include "quakedef.h"
+#include <stdint.h>
 
 #define NUM_SAFE_ARGVS  7
 
@@ -139,7 +140,7 @@ void Q_memset (void *dest, int fill, int count)
 {
 	int             i;
 	
-	if ( (((long)dest | count) & 3) == 0)
+	if ( (((uintptr_t)dest | count) & 3) == 0)
 	{
 		count >>= 2;
 		fill = fill | (fill<<8) | (fill<<16) | (fill<<24);
@@ -155,7 +156,7 @@ void Q_memcpy (void *dest, void *src, int count)
 {
 	int             i;
 	
-	if (( ( (long)dest | (long)src | count) & 3) == 0 )
+	if (( ( (uintptr_t)dest | (uintptr_t)src | count) & 3) == 0 )
 	{
 		count>>=2;
 		for (i=0 ; i<count ; i++)
