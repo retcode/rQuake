@@ -36,7 +36,7 @@ static byte maxTrack;
 
 static Mix_Music *music = NULL;
 
-static cvar_t bgmvolume = {"bgmvolume", "1", true};
+// bgmvolume is defined in snd_dma.c and declared extern in sound.h
 
 static void CDAudio_Eject(void)
 {
@@ -96,8 +96,6 @@ void CDAudio_Play(byte track, qboolean looping)
         if (!cdValid)
             return;
     }
-
-    track = track;  // Track numbers in Quake: 1 is data, 2-11 are music
 
     if (track < 1 || track > maxTrack)
     {
@@ -295,20 +293,26 @@ void CDAudio_Update(void)
 
 int CDAudio_Init(void)
 {
-    // Initialize SDL_mixer with OGG support
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096) == -1)
-    {
-        Con_Printf("CDAudio_Init: Could not initialize SDL_mixer: %s\n", Mix_GetError());
-        return -1;
-    }
-
-    Cvar_RegisterVariable(&bgmvolume);
+    // Register command (bgmvolume cvar is registered by S_Init in snd_dma.c)
     Cmd_AddCommand("cd", CD_f);
 
-    Con_Printf("CD Audio Initialized (SDL_mixer)\n");
+    // Try to initialize SDL_mixer
+    if (Mix_Init(MIX_INIT_OGG) == 0)
+    {
+        Con_Printf("CD Audio: OGG support not available\n");
+    }
 
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096) == -1)
+    {
+        Con_Printf("CD Audio: Could not open audio: %s\n", Mix_GetError());
+        enabled = false;
+        return 0;  // Return success so game continues
+    }
+
+    Con_Printf("CD Audio Initialized (SDL_mixer)\n");
     enabled = true;
     cdValid = true;
+    maxTrack = 99;
 
     return 0;
 }
@@ -323,6 +327,7 @@ void CDAudio_Shutdown(void)
     }
 
     Mix_CloseAudio();
+    Mix_Quit();
 }
 
 #else /* !USE_SDL_MIXER */

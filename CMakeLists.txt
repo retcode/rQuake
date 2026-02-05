@@ -6,7 +6,7 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Option for SDL_mixer music support
-option(USE_SDL_MIXER "Enable OGG/MP3 music playback via SDL_mixer" OFF)
+option(USE_SDL_MIXER "Enable OGG/MP3 music playback via SDL_mixer" ON)
 
 # SDL2 paths - use vcpkg installation
 set(VCPKG_ROOT "C:/vcpkg/installed/x64-windows")
@@ -15,11 +15,11 @@ set(SDL2_LIB_DIR "${VCPKG_ROOT}/lib")
 set(SDL2_BIN_DIR "${VCPKG_ROOT}/bin")
 set(SDL2_MANUAL_LINK_DIR "${VCPKG_ROOT}/lib/manual-link")
 
-# SDL2_mixer paths (if enabled)
+# SDL2_mixer paths (if enabled) - use vcpkg installation
 if(USE_SDL_MIXER)
-    set(SDL2_MIXER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../SDL2_mixer-2.8.0")
-    set(SDL2_MIXER_INCLUDE_DIR "${SDL2_MIXER_DIR}/include")
-    set(SDL2_MIXER_LIB_DIR "${SDL2_MIXER_DIR}/lib/x64")
+    set(SDL2_MIXER_INCLUDE_DIR "${VCPKG_ROOT}/include/SDL2")
+    set(SDL2_MIXER_LIB_DIR "${VCPKG_ROOT}/lib")
+    set(SDL2_MIXER_BIN_DIR "${VCPKG_ROOT}/bin")
 endif()
 
 # Find OpenGL
@@ -168,11 +168,23 @@ add_custom_command(TARGET glquake POST_BUILD
     $<TARGET_FILE_DIR:glquake>
 )
 
-# Copy SDL2_mixer.dll if enabled
+# Copy SDL2_mixer.dll and codec DLLs if enabled
 if(USE_SDL_MIXER)
     add_custom_command(TARGET glquake POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SDL2_MIXER_LIB_DIR}/SDL2_mixer.dll"
+        "${SDL2_MIXER_BIN_DIR}/SDL2_mixer.dll"
+        $<TARGET_FILE_DIR:glquake>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SDL2_MIXER_BIN_DIR}/ogg.dll"
+        $<TARGET_FILE_DIR:glquake>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SDL2_MIXER_BIN_DIR}/vorbis.dll"
+        $<TARGET_FILE_DIR:glquake>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SDL2_MIXER_BIN_DIR}/vorbisfile.dll"
+        $<TARGET_FILE_DIR:glquake>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SDL2_MIXER_BIN_DIR}/wavpackdll.dll"
         $<TARGET_FILE_DIR:glquake>
     )
 endif()
