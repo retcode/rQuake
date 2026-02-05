@@ -33,7 +33,7 @@ int				pr_edict_size;	// in bytes
 
 unsigned short		pr_crc;
 
-int		type_size[8] = {1,sizeof(string_t)/4,1,3,1,1,sizeof(func_t)/4,sizeof(void *)/4};
+int		type_size[8] = {1, 1, 1, 3, 1, 1, 1, 1};  /* All VM types are 32-bit (1 word) */
 
 ddef_t *ED_FieldAtOfs (int ofs);
 qboolean	ED_ParseEpair (void *base, ddef_t *key, char *s);
@@ -694,7 +694,7 @@ char *ED_NewString (char *string)
 {
 	char	*new, *new_p;
 	int		i,l;
-	
+
 	l = strlen(string) + 1;
 	new = Hunk_Alloc (l);
 	new_p = new;
@@ -712,8 +712,26 @@ char *ED_NewString (char *string)
 		else
 			*new_p++ = string[i];
 	}
-	
+
 	return new;
+}
+
+/*
+=============
+PR_SetString
+
+Safely converts a string pointer to a pr_strings offset for the VM.
+On 64-bit systems, verifies the offset fits in 32 bits.
+=============
+*/
+pr_int_t PR_SetString (const char *str)
+{
+	ptrdiff_t offset = str - pr_strings;
+#if QUAKE_64BIT
+	if (offset < INT32_MIN || offset > INT32_MAX)
+		Sys_Error ("PR_SetString: string offset overflow");
+#endif
+	return (pr_int_t)offset;
 }
 
 
@@ -739,7 +757,7 @@ qboolean	ED_ParseEpair (void *base, ddef_t *key, char *s)
 	switch (key->type & ~DEF_SAVEGLOBAL)
 	{
 	case ev_string:
-		*(string_t *)d = ED_NewString(s) - pr_strings;
+		*(string_t *)d = PR_SetString(ED_NewString(s));
 		break;
 		
 	case ev_float:

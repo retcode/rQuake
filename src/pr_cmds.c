@@ -248,9 +248,9 @@ void PF_setmodel (void)
 			
 	if (!*check)
 		PR_RunError ("no precache: %s\n", m);
-		
 
-	e->v.model = m - pr_strings;
+
+	e->v.model = PR_SetString(m);
 	e->v.modelindex = i; //SV_ModelIndex (m);
 
 	mod = sv.models[ (int)e->v.modelindex];  // Mod_ForName (m, true);
@@ -926,13 +926,12 @@ void PF_ftos (void)
 {
 	float	v;
 	v = G_FLOAT(OFS_PARM0);
-	
+
 	if (v == (int)v)
 		sprintf (pr_string_temp, "%d",(int)v);
 	else
 		sprintf (pr_string_temp, "%5.1f",v);
-	// On 64-bit, pr_string_temp may be far from pr_strings, so use ED_NewString
-	G_INT(OFS_RETURN) = ED_NewString(pr_string_temp) - pr_strings;
+	G_INT(OFS_RETURN) = PR_SetString(ED_NewString(pr_string_temp));
 }
 
 void PF_fabs (void)
@@ -945,16 +944,14 @@ void PF_fabs (void)
 void PF_vtos (void)
 {
 	sprintf (pr_string_temp, "'%5.1f %5.1f %5.1f'", G_VECTOR(OFS_PARM0)[0], G_VECTOR(OFS_PARM0)[1], G_VECTOR(OFS_PARM0)[2]);
-	// On 64-bit, pr_string_temp may be far from pr_strings, so use ED_NewString
-	G_INT(OFS_RETURN) = ED_NewString(pr_string_temp) - pr_strings;
+	G_INT(OFS_RETURN) = PR_SetString(ED_NewString(pr_string_temp));
 }
 
 #ifdef QUAKE2
 void PF_etos (void)
 {
 	sprintf (pr_string_temp, "entity %i", G_EDICTNUM(OFS_PARM0));
-	// On 64-bit, pr_string_temp may be far from pr_strings, so use ED_NewString
-	G_INT(OFS_RETURN) = ED_NewString(pr_string_temp) - pr_strings;
+	G_INT(OFS_RETURN) = PR_SetString(ED_NewString(pr_string_temp));
 }
 #endif
 

@@ -76,6 +76,9 @@ void ED_Free (edict_t *ed);
 char	*ED_NewString (char *string);
 // returns a copy of the string allocated from the server's string heap
 
+pr_int_t PR_SetString (const char *str);
+// converts a string pointer to a pr_strings offset for the VM (64-bit safe)
+
 void ED_Print (edict_t *ed);
 void ED_Write (FILE *f, edict_t *ed);
 char *ED_ParseEdict (char *data, edict_t *ent);
@@ -93,14 +96,14 @@ int NUM_FOR_EDICT(edict_t *e);
 
 #define	NEXT_EDICT(e) ((edict_t *)( (byte *)e + pr_edict_size))
 
-#define	EDICT_TO_PROG(e) ((byte *)e - (byte *)sv.edicts)
-#define PROG_TO_EDICT(e) ((edict_t *)((byte *)sv.edicts + e))
+#define	EDICT_TO_PROG(e) ((pr_int_t)((byte *)(e) - (byte *)sv.edicts))
+#define PROG_TO_EDICT(e) ((edict_t *)((byte *)sv.edicts + (pr_int_t)(e)))
 
 //============================================================================
 
 #define	G_FLOAT(o) (pr_globals[o])
-#define	G_INT(o) (*(int *)&pr_globals[o])
-#define	G_EDICT(o) ((edict_t *)((byte *)sv.edicts+ *(int *)&pr_globals[o]))
+#define	G_INT(o) (*(pr_int_t *)&pr_globals[o])
+#define	G_EDICT(o) ((edict_t *)((byte *)sv.edicts + *(pr_int_t *)&pr_globals[o]))
 #define G_EDICTNUM(o) NUM_FOR_EDICT(G_EDICT(o))
 #define	G_VECTOR(o) (&pr_globals[o])
 #define	G_STRING(o) (pr_strings + *(string_t *)&pr_globals[o])

@@ -8,15 +8,12 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Option for SDL_mixer music support
 option(USE_SDL_MIXER "Enable OGG/MP3 music playback via SDL_mixer" OFF)
 
-# Local SDL2 path
-set(SDL2_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../SDL2-2.32.10")
-set(SDL2_INCLUDE_DIR "${SDL2_DIR}/include")
-# Select correct lib directory based on target architecture
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x64")
-else()
-    set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x86")
-endif()
+# SDL2 paths - use vcpkg installation
+set(VCPKG_ROOT "C:/vcpkg/installed/x64-windows")
+set(SDL2_INCLUDE_DIR "${VCPKG_ROOT}/include/SDL2")
+set(SDL2_LIB_DIR "${VCPKG_ROOT}/lib")
+set(SDL2_BIN_DIR "${VCPKG_ROOT}/bin")
+set(SDL2_MANUAL_LINK_DIR "${VCPKG_ROOT}/lib/manual-link")
 
 # SDL2_mixer paths (if enabled)
 if(USE_SDL_MIXER)
@@ -27,6 +24,15 @@ endif()
 
 # Find OpenGL
 find_package(OpenGL REQUIRED)
+
+# 64-bit detection
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_definitions(-DQUAKE_64BIT=1)
+    message(STATUS "Building for 64-bit")
+else()
+    add_definitions(-DQUAKE_64BIT=0)
+    message(STATUS "Building for 32-bit")
+endif()
 
 # Compiler definitions
 add_definitions(-DGLQUAKE -DUSE_SDL -Did386=0)
@@ -135,7 +141,7 @@ endif()
 # Link libraries
 target_link_libraries(glquake PRIVATE
     ${SDL2_LIB_DIR}/SDL2.lib
-    ${SDL2_LIB_DIR}/SDL2main.lib
+    ${SDL2_MANUAL_LINK_DIR}/SDL2main.lib
     ${OPENGL_LIBRARIES}
 )
 
@@ -158,7 +164,7 @@ endif()
 # Copy SDL2.dll to output directory
 add_custom_command(TARGET glquake POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${SDL2_LIB_DIR}/SDL2.dll"
+    "${SDL2_BIN_DIR}/SDL2.dll"
     $<TARGET_FILE_DIR:glquake>
 )
 
@@ -208,6 +214,6 @@ message(STATUS "=== GLQuake Build Configuration ===")
 message(STATUS "Version:        ${PROJECT_VERSION}")
 message(STATUS "C Standard:     C${CMAKE_C_STANDARD}")
 message(STATUS "Build Type:     ${CMAKE_BUILD_TYPE}")
-message(STATUS "SDL2 Path:      ${SDL2_DIR}")
+message(STATUS "SDL2 Path:      ${VCPKG_ROOT}")
 message(STATUS "SDL_mixer:      ${USE_SDL_MIXER}")
 message(STATUS "")
