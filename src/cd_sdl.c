@@ -60,7 +60,7 @@ static char *CDAudio_GetTrackPath(byte track, char *buffer, int bufsize)
     static const char *paths[] = {
         "%s/music/track%02d.%s",      // id1/music/track02.ogg
         "%s/music/track%d.%s",        // id1/music/track2.ogg
-        "../music/track%02d.%s",      // music/track02.ogg (relative to game dir)
+        "%s/../music/track%02d.%s",   // music/track02.ogg (relative to game dir)
         NULL
     };
     int i, j;
