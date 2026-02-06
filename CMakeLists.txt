@@ -8,18 +8,41 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Option for SDL_mixer music support
 option(USE_SDL_MIXER "Enable OGG/MP3 music playback via SDL_mixer" ON)
 
-# SDL2 paths - use vcpkg installation
-set(VCPKG_ROOT "C:/vcpkg/installed/x64-windows")
-set(SDL2_INCLUDE_DIR "${VCPKG_ROOT}/include/SDL2")
-set(SDL2_LIB_DIR "${VCPKG_ROOT}/lib")
-set(SDL2_BIN_DIR "${VCPKG_ROOT}/bin")
-set(SDL2_MANUAL_LINK_DIR "${VCPKG_ROOT}/lib/manual-link")
+# SDL2 discovery
+if(WIN32)
+    # Windows: use vcpkg installation
+    set(VCPKG_ROOT "C:/vcpkg/installed/x64-windows")
+    set(SDL2_INCLUDE_DIR "${VCPKG_ROOT}/include/SDL2")
+    set(SDL2_LIB_DIR "${VCPKG_ROOT}/lib")
+    set(SDL2_BIN_DIR "${VCPKG_ROOT}/bin")
+    set(SDL2_MANUAL_LINK_DIR "${VCPKG_ROOT}/lib/manual-link")
 
-# SDL2_mixer paths (if enabled) - use vcpkg installation
-if(USE_SDL_MIXER)
-    set(SDL2_MIXER_INCLUDE_DIR "${VCPKG_ROOT}/include/SDL2")
-    set(SDL2_MIXER_LIB_DIR "${VCPKG_ROOT}/lib")
-    set(SDL2_MIXER_BIN_DIR "${VCPKG_ROOT}/bin")
+    if(USE_SDL_MIXER)
+        set(SDL2_MIXER_INCLUDE_DIR "${VCPKG_ROOT}/include/SDL2")
+        set(SDL2_MIXER_LIB_DIR "${VCPKG_ROOT}/lib")
+        set(SDL2_MIXER_BIN_DIR "${VCPKG_ROOT}/bin")
+    endif()
+else()
+    # macOS/Linux: use system packages via find_package or pkg-config
+    find_package(PkgConfig QUIET)
+
+    find_package(SDL2 QUIET)
+    if(NOT SDL2_FOUND AND PKG_CONFIG_FOUND)
+        pkg_check_modules(SDL2 REQUIRED sdl2)
+    endif()
+    if(NOT SDL2_FOUND)
+        message(FATAL_ERROR "SDL2 not found. Install via: brew install sdl2 (macOS) or apt install libsdl2-dev (Linux)")
+    endif()
+
+    if(USE_SDL_MIXER)
+        find_package(SDL2_mixer QUIET)
+        if(NOT SDL2_mixer_FOUND AND PKG_CONFIG_FOUND)
+            pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
+        endif()
+        if(NOT SDL2_mixer_FOUND AND NOT SDL2_MIXER_FOUND)
+            message(FATAL_ERROR "SDL2_mixer not found. Install via: brew install sdl2_mixer (macOS) or apt install libsdl2-mixer-dev (Linux)")
+        endif()
+    endif()
 endif()
 
 # Find OpenGL
@@ -128,25 +151,52 @@ add_executable(glquake
 )
 
 # Include directories
-target_include_directories(glquake PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${SDL2_INCLUDE_DIR}
-    ${OPENGL_INCLUDE_DIR}
-)
-
-if(USE_SDL_MIXER)
-    target_include_directories(glquake PRIVATE ${SDL2_MIXER_INCLUDE_DIR})
+if(WIN32)
+    target_include_directories(glquake PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${SDL2_INCLUDE_DIR}
+        ${OPENGL_INCLUDE_DIR}
+    )
+    if(USE_SDL_MIXER)
+        target_include_directories(glquake PRIVATE ${SDL2_MIXER_INCLUDE_DIR})
+    endif()
+else()
+    target_include_directories(glquake PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${SDL2_INCLUDE_DIRS}
+        ${OPENGL_INCLUDE_DIR}
+    )
+    if(USE_SDL_MIXER)
+        if(TARGET SDL2_mixer::SDL2_mixer)
+            # find_package succeeded with imported target — includes handled automatically
+        elseif(SDL2_MIXER_INCLUDE_DIRS)
+            target_include_directories(glquake PRIVATE ${SDL2_MIXER_INCLUDE_DIRS})
+        endif()
+    endif()
 endif()
 
 # Link libraries
-target_link_libraries(glquake PRIVATE
-    ${SDL2_LIB_DIR}/SDL2.lib
-    ${SDL2_MANUAL_LINK_DIR}/SDL2main.lib
-    ${OPENGL_LIBRARIES}
-)
-
-if(USE_SDL_MIXER)
-    target_link_libraries(glquake PRIVATE ${SDL2_MIXER_LIB_DIR}/SDL2_mixer.lib)
+if(WIN32)
+    target_link_libraries(glquake PRIVATE
+        ${SDL2_LIB_DIR}/SDL2.lib
+        ${SDL2_MANUAL_LINK_DIR}/SDL2main.lib
+        ${OPENGL_LIBRARIES}
+    )
+    if(USE_SDL_MIXER)
+        target_link_libraries(glquake PRIVATE ${SDL2_MIXER_LIB_DIR}/SDL2_mixer.lib)
+    endif()
+else()
+    target_link_libraries(glquake PRIVATE
+        ${SDL2_LIBRARIES}
+        ${OPENGL_LIBRARIES}
+    )
+    if(USE_SDL_MIXER)
+        if(TARGET SDL2_mixer::SDL2_mixer)
+            target_link_libraries(glquake PRIVATE SDL2_mixer::SDL2_mixer)
+        elseif(SDL2_MIXER_LIBRARIES)
+            target_link_libraries(glquake PRIVATE ${SDL2_MIXER_LIBRARIES})
+        endif()
+    endif()
 endif()
 
 # Platform-specific settings
@@ -157,36 +207,43 @@ if(WIN32)
     if(MSVC)
         target_compile_options(glquake PRIVATE /Od /fp:strict)
     endif()
-elseif(UNIX AND NOT APPLE)
+elseif(APPLE)
     target_link_libraries(glquake PRIVATE m)
+    target_compile_definitions(glquake PRIVATE GL_SILENCE_DEPRECATION)
+    # Legacy Quake code uses implicit function declarations throughout
+    target_compile_options(glquake PRIVATE -Wno-implicit-function-declaration)
+elseif(UNIX)
+    target_link_libraries(glquake PRIVATE m)
+    target_compile_options(glquake PRIVATE -Wno-implicit-function-declaration)
 endif()
 
-# Copy SDL2.dll to output directory
-add_custom_command(TARGET glquake POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${SDL2_BIN_DIR}/SDL2.dll"
-    $<TARGET_FILE_DIR:glquake>
-)
-
-# Copy SDL2_mixer.dll and codec DLLs if enabled
-if(USE_SDL_MIXER)
+# Copy DLLs to output directory (Windows only)
+if(WIN32)
     add_custom_command(TARGET glquake POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SDL2_MIXER_BIN_DIR}/SDL2_mixer.dll"
-        $<TARGET_FILE_DIR:glquake>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SDL2_MIXER_BIN_DIR}/ogg.dll"
-        $<TARGET_FILE_DIR:glquake>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SDL2_MIXER_BIN_DIR}/vorbis.dll"
-        $<TARGET_FILE_DIR:glquake>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SDL2_MIXER_BIN_DIR}/vorbisfile.dll"
-        $<TARGET_FILE_DIR:glquake>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${SDL2_MIXER_BIN_DIR}/wavpackdll.dll"
+        "${SDL2_BIN_DIR}/SDL2.dll"
         $<TARGET_FILE_DIR:glquake>
     )
+
+    if(USE_SDL_MIXER)
+        add_custom_command(TARGET glquake POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SDL2_MIXER_BIN_DIR}/SDL2_mixer.dll"
+            $<TARGET_FILE_DIR:glquake>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SDL2_MIXER_BIN_DIR}/ogg.dll"
+            $<TARGET_FILE_DIR:glquake>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SDL2_MIXER_BIN_DIR}/vorbis.dll"
+            $<TARGET_FILE_DIR:glquake>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SDL2_MIXER_BIN_DIR}/vorbisfile.dll"
+            $<TARGET_FILE_DIR:glquake>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SDL2_MIXER_BIN_DIR}/wavpackdll.dll"
+            $<TARGET_FILE_DIR:glquake>
+        )
+    endif()
 endif()
 
 # Create id1 folder for game data
@@ -226,6 +283,10 @@ message(STATUS "=== GLQuake Build Configuration ===")
 message(STATUS "Version:        ${PROJECT_VERSION}")
 message(STATUS "C Standard:     C${CMAKE_C_STANDARD}")
 message(STATUS "Build Type:     ${CMAKE_BUILD_TYPE}")
-message(STATUS "SDL2 Path:      ${VCPKG_ROOT}")
+if(WIN32)
+    message(STATUS "SDL2 Path:      ${VCPKG_ROOT}")
+else()
+    message(STATUS "SDL2 Path:      (system)")
+endif()
 message(STATUS "SDL_mixer:      ${USE_SDL_MIXER}")
 message(STATUS "")
